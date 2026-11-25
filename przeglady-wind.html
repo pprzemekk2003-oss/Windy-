@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14181f">
+<title>Przeglądy wind</title>
+<style>
+:root{--bg:#14181f;--panel:#1b212b;--line:#2b3340;--fg:#e8ecf1;--mut:#8b97a8;--acc:#ffb020;--accfg:#111;--ok:#22b455;--soon:#ff9d00;--late:#e5484d;--none:#7d8896;--in:#10141a;color-scheme:dark}
+@media (prefers-color-scheme:light){:root{--bg:#f3f5f8;--panel:#fff;--line:#d9dee6;--fg:#161b22;--mut:#5b6675;--acc:#d98400;--accfg:#fff;--in:#fff;color-scheme:light}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
+header{position:fixed;top:0;left:0;right:0;height:calc(46px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 12px 0;display:flex;align-items:center;gap:10px;background:var(--panel);border-bottom:1px solid var(--line);z-index:30}
+header h1{font-size:16px;margin:0;flex:1}
+header .pill{font-size:12px;padding:3px 9px;border-radius:12px;color:#fff;font-weight:600}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--panel);border-top:1px solid var(--line);z-index:30;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:13px 4px;font-size:14px}
+nav button.on{color:var(--acc);font-weight:700}
+.view{position:fixed;left:0;right:0;top:calc(46px + env(safe-area-inset-top,0px));bottom:calc(46px + env(safe-area-inset-bottom,0px));overflow:auto;-webkit-overflow-scrolling:touch}
+#v-map{overflow:hidden}
+#map{position:absolute;inset:0;overflow:hidden;background:#cfd6dd;touch-action:none;user-select:none;-webkit-user-select:none}
+#tiles,#marks{position:absolute;inset:0}
+#tiles img{position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.mk{position:absolute;left:0;top:0;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 5px #0009;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;cursor:pointer;touch-action:none}
+.mk::after{content:"";position:absolute;inset:-9px;border-radius:50%}
+.mk.sel{outline:4px solid #2f8cff;z-index:5}
+.me{position:absolute;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:#2f8cff;border:3px solid #fff;box-shadow:0 0 0 6px #2f8cff44;pointer-events:none}
+.chips{position:absolute;left:8px;right:62px;top:8px;display:flex;gap:6px;overflow-x:auto;z-index:6;padding-bottom:4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:18px;padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.chip.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.tools{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px;z-index:7}
+.tools button{width:42px;height:42px;border-radius:11px;border:1px solid var(--line);background:var(--panel);color:var(--fg);font-size:19px;font-weight:600;padding:0}
+.attr{position:absolute;left:4px;bottom:3px;font-size:10px;background:#fffc;color:#222;padding:1px 5px;border-radius:3px;z-index:4}
+.offl{position:absolute;left:50%;top:56px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:10px;font-size:12px;z-index:6;color:var(--mut);max-width:90%;text-align:center}
+#card{position:absolute;left:8px;right:8px;bottom:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;z-index:8;box-shadow:0 4px 18px #0006}
+#card h3{margin:0 0 2px;font-size:16px}
+.mut{color:var(--mut);font-size:13px}
+.st{display:inline-block;font-size:12px;font-weight:700;color:#fff;padding:2px 9px;border-radius:10px;margin:6px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 0}
+.b{background:var(--line);color:var(--fg);border:0;border-radius:10px;padding:10px 14px;font-size:14px;font-weight:600}
+.b.pri{background:var(--acc);color:var(--accfg)}
+.b.red{background:#7a2a2a;color:#fff}
+.b.sm{padding:7px 11px;font-size:13px}
+.pad{padding:12px}
+.inp,.view select,.sheet input,.sheet textarea{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--in);color:var(--fg);font:inherit;font-size:16px}
+.item{display:flex;align-items:center;gap:11px;padding:11px 12px;border-bottom:1px solid var(--line)}
+.dot{flex:none;width:14px;height:14px;border-radius:50%}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card2{margin:12px;padding:14px;border-radius:14px;background:var(--panel);border:1px solid var(--line)}
+.card2 h3{margin:0 0 6px;font-size:15px}
+.sheet{position:fixed;inset:0;z-index:50;background:var(--bg);overflow:auto;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 50px}
+.sheet label{display:block;margin:12px 0 3px;font-size:12px;color:var(--mut)}
+.sheet h2{margin:8px 0 2px;font-size:19px}
+.toast{position:fixed;left:50%;top:calc(58px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:#222c;color:#fff;background:#1f2a38;border:1px solid var(--line);padding:9px 15px;border-radius:12px;z-index:60;font-size:14px;max-width:92%}
+.warn{position:fixed;top:calc(46px + env(safe-area-inset-top,0px));left:0;right:0;background:#4a3a10;color:#ffd77a;padding:6px 12px;font-size:12px;z-index:29}
+.empty{padding:32px 20px;text-align:center;color:var(--mut)}
+.empty .b{margin-top:14px}
+.bar{height:8px;border-radius:5px;background:var(--line);overflow:hidden;margin:10px 0}
+.bar>i{display:block;height:100%;width:0;background:var(--acc)}
+textarea.inp{min-height:130px;font-size:14px}
+</style>
+</head>
+<body>
+<header><h1>Przeglądy wind</h1><span class="pill" id="hpill" hidden></span></header>
+<div id="warn"></div>
+
+<div class="view" id="v-map">
+  <div id="map"><div id="tiles"></div><div id="marks"></div></div>
+  <div class="chips" id="chipsM"></div>
+  <div class="tools">
+    <button data-a="zin" aria-label="Przybliż">+</button>
+    <button data-a="zout" aria-label="Oddal">−</button>
+    <button data-a="fit" aria-label="Pokaż wszystkie">⤢</button>
+    <button data-a="loc" aria-label="Moja lokalizacja">◎</button>
+    <button data-a="prov" aria-label="Zmień podkład mapy" style="font-size:12px">Mapa</button>
+  </div>
+  <div class="attr">© OpenStreetMap</div>
+  <div class="offl" id="offl" hidden>Nie ładuje się podkład mapy. Sprawdź internet i otwórz plik w Chrome lub Safari (nie w podglądzie w aplikacji). Przycisk „Mapa” zmienia źródło. Punkty nadal są widoczne.</div>
+  <div id="card" hidden></div>
+</div>
+
+<div class="view" id="v-list" hidden>
+  <div class="pad" style="padding-bottom:0"><input class="inp" id="q" placeholder="Szukaj: nazwa, adres…"></div>
+  <div class="pad" style="display:flex;gap:8px;align-items:center;padding-bottom:4px">
+    <select id="sort" style="flex:1"><option value="urg">Sortuj: pilność</option><option value="near">Sortuj: najbliższe</option><option value="name">Sortuj: nazwa</option></select>
+    <button class="b pri" data-a="newlift">+ Winda</button>
+  </div>
+  <div class="chips" id="chipsL" style="position:static;padding:4px 12px 8px"></div>
+  <div id="list"></div>
+</div>
+
+<div class="view" id="v-more" hidden></div>
+
+<nav>
+  <button data-t="map" class="on">Mapa</button>
+  <button data-t="list">Lista</button>
+  <button data-t="more">Więcej</button>
+</nav>
+<div class="sheet" id="sheet" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="fcsv" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden>
+
+<script>
+/* ========= narzędzia ========= */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+const pad2=n=>String(n).padStart(2,'0');
+const isoOf=d=>d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+const today=()=>isoOf(new Date());
+const dayNum=iso=>{const [y,m,d]=iso.split('-').map(Number);return Date.UTC(y,m-1,d)/864e5};
+const fmt=iso=>iso?iso.slice(8,10)+'.'+iso.slice(5,7)+'.'+iso.slice(0,4):'—';
+function addMonths(iso,n){const [y,m,d]=iso.split('-').map(Number);const dt=new Date(y,m-1+n,1);const dim=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();dt.setDate(Math.min(d,dim));return isoOf(dt)}
+function plDays(n){n=Math.abs(n);return n===1?'1 dzień':n+' dni'}
+function toast(t,ms=2400){const e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>e.hidden=true,ms)}
+function parseDate(v){
+  if(v==null)return null;let s=String(v).trim();if(!s)return null;
+  if(/^\d{5}(\.\d+)?$/.test(s)){const n=+s;if(n>20000&&n<80000){return isoOf(new Date(Date.UTC(1899,11,30)+n*864e5+12*36e5)).replace(/^(\d+)/,'$1')}}
+  let m=s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);if(m)return m[1]+'-'+pad2(m[2])+'-'+pad2(m[3]);
+  m=s.match(/^(\d{1,2})[-./ ](\d{1,2})[-./ ](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return y+'-'+pad2(m[2])+'-'+pad2(m[1])}
+  return null;
+}
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+
+/* ========= dane ========= */
+const KEY='windy_przeglady_v1';
+let S={lifts:[],warn:14};let storeOK=true;
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY));if(x&&Array.isArray(x.lifts))S=Object.assign(S,x)}catch(e){if(String(e).indexOf('Security')>=0)storeOK=false}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){storeOK=false;$('#warn').innerHTML='<div class="warn">Zapis w pamięci przeglądarki jest niedostępny – zmiany znikną po zamknięciu. Używaj Więcej → Eksport.</div>'}headerPill()}
+function status(l){
+  if(!l.due)return{k:'none',c:'var(--none)',sym:'?',txt:'brak terminu',n:1e9};
+  const d=dayNum(l.due)-dayNum(today());
+  if(d<0)return{k:'late',c:'var(--late)',sym:'!',txt:'po terminie o '+plDays(d),n:d};
+  if(d<=S.warn)return{k:'soon',c:'var(--soon)',sym:'•',txt:d===0?'termin dziś':'za '+plDays(d),n:d};
+  return{k:'ok',c:'var(--ok)',sym:'✓',txt:'za '+plDays(d),n:d};
+}
+const rank={late:0,soon:1,ok:2,none:3};
+function urg(a,b){const sa=status(a),sb=status(b);if(sa.k!==sb.k)return rank[sa.k]-rank[sb.k];return sa.n-sb.n||String(a.name).localeCompare(b.name,'pl',{numeric:true})}
+const hasPos=l=>typeof l.lat==='number'&&typeof l.lng==='number';
+function headerPill(){
+  const late=S.lifts.filter(l=>status(l).k==='late').length,soon=S.lifts.filter(l=>status(l).k==='soon').length;
+  const p=$('#hpill');if(!S.lifts.length){p.hidden=true;return}p.hidden=false;
+  p.style.background=late?'var(--late)':soon?'var(--soon)':'var(--ok)';
+  p.textContent=late?late+' po terminie':soon?soon+' wkrótce':'wszystko ok';
+}
+
+/* ========= filtr ========= */
+let filt='all',q='',me=null,selId=null;
+const FILTERS=[['all','Wszystkie',null],['late','Po terminie','var(--late)'],['soon','Wkrótce','var(--soon)'],['ok','W porządku','var(--ok)'],['none','Bez terminu','var(--none)'],['nopos','Bez lokalizacji',null]];
+function passes(l){
+  if(filt==='nopos')return !hasPos(l);
+  if(filt!=='all'&&status(l).k!==filt)return false;
+  return true;
+}
+function chipsHTML(){
+  return FILTERS.map(([k,t,c])=>{
+    const n=S.lifts.filter(l=>k==='all'?true:k==='nopos'?!hasPos(l):status(l).k===k).length;
+    if(k==='nopos'&&!n)return '';
+    return `<button class="chip ${filt===k?'on':''}" data-f="${k}">${c?`<i style="background:${c}"></i>`:''}${t} ${n}</button>`}).join('');
+}
+
+/* ========= mapa własna (kafelki OSM) ========= */
+const M={lat:52.0,lng:19.4,z:6};let MW=1,MH=1,tileErr=0,tileOk=0;
+const tilesEl=$('#tiles'),marksEl=$('#marks'),mapEl=$('#map');
+const PROV=[
+ {n:'OpenStreetMap',u:(z,x,y)=>`https://tile.openstreetmap.org/${z}/${x}/${y}.png`,a:'© OpenStreetMap'},
+ {n:'CARTO',u:(z,x,y)=>`https://a.basemaps.cartocdn.com/rastertiles/voyager/${z}/${x}/${y}.png`,a:'© OpenStreetMap, © CARTO'},
+ {n:'Esri',u:(z,x,y)=>`https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/${z}/${y}/${x}`,a:'Tiles © Esri'}];
+let prov=0;try{prov=Math.min(PROV.length-1,Math.max(0,+localStorage.getItem('windy_prov')||0))}catch(e){}
+let provTries=0;
+const tileCache=new Map(),mk=new Map();let meEl=null;
+function setProv(i,manual){
+  prov=i%PROV.length;try{localStorage.setItem('windy_prov',prov)}catch(e){}
+  for(const [,img] of tileCache)img.remove();tileCache.clear();tileErr=0;tileOk=0;
+  document.querySelector('.attr').textContent=PROV[prov].a;
+  if(manual)toast('Podkład mapy: '+PROV[prov].n);draw();
+}
+function proj(lat,lng,z){const s=256*Math.pow(2,z);const sin=Math.sin(Math.max(-85,Math.min(85,lat))*Math.PI/180);return{x:(lng+180)/360*s,y:(.5-Math.log((1+sin)/(1-sin))/(4*Math.PI))*s}}
+function unproj(x,y,z){const s=256*Math.pow(2,z);const n=Math.PI-2*Math.PI*y/s;return{lat:180/Math.PI*Math.atan(.5*(Math.exp(n)-Math.exp(-n))),lng:x/s*360-180}}
+const clampZ=z=>Math.max(3,Math.min(18,z));
+let drawQ=false;function draw(){if(drawQ)return;drawQ=true;requestAnimationFrame(()=>{drawQ=false;drawNow()})}
+function drawNow(){
+  if($('#v-map').hidden)return;
+  MW=mapEl.clientWidth;MH=mapEl.clientHeight;if(!MW)return;
+  const c=proj(M.lat,M.lng,M.z);
+  const zi=Math.max(3,Math.min(19,Math.round(M.z)));const k=Math.pow(2,M.z-zi);const cz=proj(M.lat,M.lng,zi);
+  const n=Math.pow(2,zi);
+  const x0=Math.floor((cz.x-MW/2/k)/256),x1=Math.floor((cz.x+MW/2/k)/256),y0=Math.floor((cz.y-MH/2/k)/256),y1=Math.floor((cz.y+MH/2/k)/256);
+  const need=new Set();
+  for(let ty=y0;ty<=y1;ty++){if(ty<0||ty>=n)continue;for(let tx=x0;tx<=x1;tx++){
+    const wx=((tx%n)+n)%n,key=prov+'/'+zi+'/'+wx+'/'+ty+'@'+tx;need.add(key);
+    let img=tileCache.get(key);
+    if(!img){img=document.createElement('img');img.alt='';img.draggable=false;img.decoding='async';
+      const myProv=prov;img.onload=()=>{tileOk++;$('#offl').hidden=true;provTries=0};
+      img.onerror=()=>{if(myProv!==prov)return;tileErr++;img.remove();tileCache.delete(key);
+        if(!tileOk&&tileErr>=4){if(provTries<PROV.length-1){provTries++;setProv(prov+1,false);toast('Próbuję innego źródła map…',2000)}else $('#offl').hidden=false}}
+      img.src=PROV[prov].u(zi,wx,ty);tilesEl.appendChild(img);tileCache.set(key,img)}
+    img.style.width=img.style.height='256px';
+    img.style.transform=`translate(${MW/2+(tx*256-cz.x)*k}px,${MH/2+(ty*256-cz.y)*k}px) scale(${k*1.004})`;
+  }}
+  for(const [key,img] of tileCache)if(!need.has(key)){img.remove();tileCache.delete(key)}
+  for(const [id,el] of mk){const l=S.lifts.find(x=>x.id===id);if(!l){continue}
+    const p=proj(l.lat,l.lng,M.z);const sx=MW/2+p.x-c.x,sy=MH/2+p.y-c.y;
+    el.style.display=(sx<-30||sx>MW+30||sy<-30||sy>MH+30)?'none':'flex';el.style.transform=`translate(${sx}px,${sy}px)`}
+  if(me&&meEl){const p=proj(me.lat,me.lng,M.z);meEl.style.transform=`translate(${MW/2+p.x-c.x}px,${MH/2+p.y-c.y}px)`}
+}
+function rebuildMarks(){
+  marksEl.innerHTML='';mk.clear();meEl=null;
+  S.lifts.filter(l=>hasPos(l)&&passes(l)).sort((a,b)=>urg(b,a)).forEach(l=>{
+    const st=status(l);const e=document.createElement('div');e.className='mk'+(l.id===selId?' sel':'');e.dataset.id=l.id;
+    e.style.background=st.c;e.textContent=st.sym;e.title=l.name;marksEl.appendChild(e);mk.set(l.id,e)});
+  if(me){meEl=document.createElement('div');meEl.className='me';marksEl.appendChild(meEl)}
+  draw();
+}
+function setCenterFromPx(cx,cy){const u=unproj(cx,cy,M.z);M.lat=Math.max(-84,Math.min(84,u.lat));M.lng=u.lng}
+function zoomAt(f,sx,sy){
+  const c=proj(M.lat,M.lng,M.z);const gx=c.x+(sx-MW/2),gy=c.y+(sy-MH/2);const geo=unproj(gx,gy,M.z);
+  M.z=clampZ(M.z+Math.log2(f));const p=proj(geo.lat,geo.lng,M.z);setCenterFromPx(p.x-(sx-MW/2),p.y-(sy-MH/2));draw();
+}
+function fitAll(){
+  const pts=S.lifts.filter(l=>hasPos(l)&&passes(l));MW=mapEl.clientWidth||360;MH=mapEl.clientHeight||600;
+  if(!pts.length){M.lat=52.0;M.lng=19.4;M.z=6;draw();return}
+  if(pts.length===1){M.lat=pts[0].lat;M.lng=pts[0].lng;M.z=15;draw();return}
+  const lats=pts.map(p=>p.lat),lngs=pts.map(p=>p.lng);
+  const mnLa=Math.min(...lats),mxLa=Math.max(...lats),mnLn=Math.min(...lngs),mxLn=Math.max(...lngs);
+  let z=17;for(;z>3;z-=.25){const a=proj(mxLa,mnLn,z),b=proj(mnLa,mxLn,z);if(b.x-a.x<MW-90&&b.y-a.y<MH-150)break}
+  const a=proj(mxLa,mnLn,z),b=proj(mnLa,mxLn,z);M.z=z;const u=unproj((a.x+b.x)/2,(a.y+b.y)/2+30,z);M.lat=u.lat;M.lng=u.lng;draw();
+}
+function focusOn(l,z){M.lat=l.lat;M.lng=l.lng;M.z=z||Math.max(M.z,15);draw()}
+/* gesty */
+const ptrs=new Map();let g0=null,moved=false,noClick=false;
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function startG(){
+  const pts=[...ptrs.values()];const r=mapEl.getBoundingClientRect();
+  if(pts.length===1){g0={t:'pan',px:pts[0].x,py:pts[0].y,c:proj(M.lat,M.lng,M.z)}}
+  else if(pts.length>=2){const [a,b]=pts;const sx=(a.x+b.x)/2-r.left,sy=(a.y+b.y)/2-r.top;
+    const c=proj(M.lat,M.lng,M.z);g0={t:'pinch',d:dist(a,b)||1,z:M.z,geo:unproj(c.x+(sx-MW/2),c.y+(sy-MH/2),M.z)}}
+  else g0=null;
+}
+mapEl.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptrs.size===1)moved=false;startG()});
+window.addEventListener('pointermove',e=>{
+  if(!ptrs.has(e.pointerId)||!g0)return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(g0.t==='pan'){const dx=e.clientX-g0.px,dy=e.clientY-g0.py;if(Math.hypot(dx,dy)>6)moved=true;if(moved){setCenterFromPx(g0.c.x-dx,g0.c.y-dy);draw()}}
+  else{const [a,b]=[...ptrs.values()];const r=mapEl.getBoundingClientRect();const sx=(a.x+b.x)/2-r.left,sy=(a.y+b.y)/2-r.top;moved=true;
+    M.z=clampZ(g0.z+Math.log2(dist(a,b)/g0.d));const p=proj(g0.geo.lat,g0.geo.lng,M.z);setCenterFromPx(p.x-(sx-MW/2),p.y-(sy-MH/2));draw()}
+});
+function endP(e){if(!ptrs.has(e.pointerId))return;ptrs.delete(e.pointerId);if(moved){noClick=true;setTimeout(()=>noClick=false,350)}startG()}
+window.addEventListener('pointerup',endP);window.addEventListener('pointercancel',endP);
+document.addEventListener('click',e=>{if(noClick){e.stopPropagation();e.preventDefault()}},true);
+mapEl.addEventListener('wheel',e=>{e.preventDefault();const r=mapEl.getBoundingClientRect();zoomAt(Math.exp(-e.deltaY*.0018),e.clientX-r.left,e.clientY-r.top)},{passive:false});
+window.addEventListener('resize',()=>{draw()});
+marksEl.addEventListener('click',e=>{const m=e.target.closest('.mk');if(m)selectLift(m.dataset.id)});
+
+/* ========= karta wybranej windy ========= */
+function selectLift(id){
+  selId=id;mk.forEach((el,i)=>el.classList.toggle('sel',i===id));
+  const l=S.lifts.find(x=>x.id===id);const c=$('#card');if(!l){c.hidden=true;return}
+  const st=status(l);
+  c.innerHTML=`<div style="display:flex;gap:8px"><div style="flex:1;min-width:0"><h3>${esc(l.name)}</h3><div class="mut">${esc(l.address||'bez adresu')}</div></div><button class="b sm" data-a="closecard">✕</button></div>
+  <span class="st" style="background:${st.c}">${esc(st.txt)}</span>
+  <div class="mut">Ostatni przegląd: <b style="color:var(--fg)">${fmt(l.last)}</b> · Termin: <b style="color:var(--fg)">${fmt(l.due)}</b></div>
+  <div class="row"><button class="b pri" data-a="done" data-id="${l.id}">✓ Zrobiony</button><button class="b" data-a="nav" data-id="${l.id}">Nawiguj</button><button class="b" data-a="open" data-id="${l.id}">Szczegóły</button></div>`;
+  c.hidden=false;
+}
+
+/* ========= widoki ========= */
+let tab='map',needFit=false;
+function showTab(t){
+  tab=t;['map','list','more'].forEach(k=>{$('#v-'+k).hidden=k!==t});
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  if(t==='map'){refreshAll();if(needFit){needFit=false;fitAll()}}
+  else if(t==='list')renderList();else renderMore();
+}
+function refreshAll(){
+  $('#chipsM').innerHTML=chipsHTML();$('#chipsL').innerHTML=chipsHTML();headerPill();
+  if(tab==='map'){rebuildMarks();if(selId&&!mk.has(selId)){selId=null;$('#card').hidden=true}}
+  if(tab==='list')renderList(true);
+}
+function dkm(a,b){const R=6371,r=Math.PI/180,dLa=(b.lat-a.lat)*r,dLn=(b.lng-a.lng)*r;const h=Math.sin(dLa/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLn/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function renderList(keepInputs){
+  $('#chipsL').innerHTML=chipsHTML();
+  const mode=$('#sort').value;const t=norm(q);
+  let a=S.lifts.filter(passes).filter(l=>!t||norm(l.name+' '+(l.address||'')+' '+(l.notes||'')).includes(t));
+  if(mode==='name')a.sort((x,y)=>String(x.name).localeCompare(y.name,'pl',{numeric:true}));
+  else if(mode==='near'){
+    if(!me){toast('Najpierw włącz lokalizację (przycisk ◎ na mapie).');a.sort(urg)}
+    else a.sort((x,y)=>(hasPos(x)?dkm(me,x):1e9)-(hasPos(y)?dkm(me,y):1e9))}
+  else a.sort(urg);
+  if(!S.lifts.length){$('#list').innerHTML=`<div class="empty">Nie ma jeszcze żadnych wind.<br>Zaimportuj listę z Excela albo dodaj pierwszą.<br><button class="b pri" data-a="gomore">Importuj z Excela</button></div>`;return}
+  $('#list').innerHTML=a.map(l=>{const st=status(l);const d=me&&hasPos(l)?` · ${dkm(me,l).toFixed(dkm(me,l)<10?1:0)} km`:'';
+    return `<div class="item" data-a="open" data-id="${l.id}"><span class="dot" style="background:${st.c}"></span><div class="t"><b>${esc(l.name)}</b><span class="mut">${esc(l.address||'bez adresu')}${hasPos(l)?'':' · brak lokalizacji'}</span><div style="font-size:12px;color:${st.c};font-weight:700">${esc(st.txt)} <span class="mut" style="font-weight:400">· termin ${fmt(l.due)}${d}</span></div></div><button class="b sm pri" data-a="done" data-id="${l.id}">✓</button></div>`}).join('')||'<div class="empty">Brak wyników.</div>';
+}
+
+/* ========= arkusz: szczegóły windy ========= */
+function sheet(html){const s=$('#sheet');s.innerHTML=html;s.hidden=false;s.scrollTop=0}
+function closeSheet(){$('#sheet').hidden=true;refreshAll();if(tab==='more')renderMore()}
+let cur=null;
+function openLift(id){
+  const l=S.lifts.find(x=>x.id===id);if(!l)return;cur=l;const st=status(l);
+  sheet(`<div class="row" style="margin-top:0"><button class="b" data-a="close">← Zamknij</button></div>
+  <h2>${esc(l.name)}</h2><span class="st" style="background:${st.c}">${esc(st.txt)}</span>
+  <div class="row"><button class="b pri" data-a="done" data-id="${l.id}">✓ Przegląd zrobiony</button>${hasPos(l)?`<button class="b" data-a="nav" data-id="${l.id}">Nawiguj</button><button class="b" data-a="show" data-id="${l.id}">Na mapie</button>`:''}</div>
+  <label>Nazwa / numer urządzenia</label><input data-k="name" value="${esc(l.name)}">
+  <label>Adres</label><input data-k="address" value="${esc(l.address||'')}">
+  <div class="row"><button class="b sm" data-a="geo1">Znajdź lokalizację z adresu</button><button class="b sm" data-a="gps1">Ustaw na moją pozycję</button></div>
+  <div class="mut" id="posinfo">${hasPos(l)?'Pozycja: '+l.lat.toFixed(5)+', '+l.lng.toFixed(5):'Brak lokalizacji – winda nie jest widoczna na mapie.'}</div>
+  <label>Ostatni przegląd</label><input type="date" data-k="last" value="${esc(l.last||'')}">
+  <label>Termin następnego przeglądu</label><input type="date" data-k="due" value="${esc(l.due||'')}">
+  <label>Uwagi</label><textarea data-k="notes" rows="3">${esc(l.notes||'')}</textarea>
+  <label>Historia przeglądów</label>
+  <div class="mut">${(l.hist&&l.hist.length)?l.hist.slice().reverse().map(h=>fmt(h)).join(' · '):'brak wpisów'}</div>
+  <div class="row" style="margin-top:24px"><button class="b red" data-a="dellift">Usuń windę</button></div>`);
+}
+/* arkusz: przegląd zrobiony */
+function doneSheet(id){
+  const l=S.lifts.find(x=>x.id===id);if(!l)return;cur=l;
+  sheet(`<div class="row" style="margin-top:0"><button class="b" data-a="close">← Anuluj</button></div>
+  <h2>Przegląd zrobiony</h2><div class="mut">${esc(l.name)}${l.address?' · '+esc(l.address):''}</div>
+  <label>Data wykonania</label><input type="date" id="d_date" value="${today()}">
+  <label>Termin następnego przeglądu</label><input type="date" id="d_due" value="">
+  <div class="row"><span class="mut" style="width:100%">Szybki wybór (od daty wykonania):</span>
+  <button class="b sm" data-a="q" data-n="1">+1 mies.</button><button class="b sm" data-a="q" data-n="3">+3 mies.</button><button class="b sm" data-a="q" data-n="6">+6 mies.</button><button class="b sm" data-a="q" data-n="12">+12 mies.</button></div>
+  <div class="row" style="margin-top:22px"><button class="b pri" data-a="donesave">Zapisz</button></div>`);
+}
+
+/* ========= import / eksport ========= */
+function parseTable(text){
+  text=text.replace(/^﻿/,'');const first=text.split(/\r?\n/)[0]||'';
+  const d=first.includes('\t')?'\t':(first.split(';').length>=first.split(',').length?';':',');
+  const rows=[];let row=[],cell='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cell+='"';i++}else q=false}else cell+=ch}
+    else if(ch==='"')q=true;else if(ch===d){row.push(cell);cell=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cell);cell='';if(row.some(x=>x.trim()))rows.push(row);row=[]}
+    else cell+=ch}
+  row.push(cell);if(row.some(x=>x.trim()))rows.push(row);return rows;
+}
+const HDR={name:['nazwa','numer','urzadzenie','winda','nr','id','nazwa urzadzenia','obiekt','numer urzadzenia','nr urzadzenia','nr ud','ud'],address:['adres','address','lokalizacja','ulica','miejsce'],lat:['lat','latitude','szerokosc','szerokosc geograficzna'],lng:['lng','lon','long','longitude','dlugosc','dlugosc geograficzna'],last:['ostatni przeglad','ostatni','last','data przegladu','ostatnio','ostatnia wizyta','data ostatniego przegladu'],due:['termin','nastepny przeglad','nastepny','due','termin przegladu','do kiedy','termin nastepnego przegladu','nastepny termin'],notes:['uwagi','notatki','notes','opis','komentarz']};
+function importText(text){
+  const rows=parseTable(text);if(rows.length<2)return {err:'Nie znaleziono danych. Wklej nagłówki w pierwszym wierszu i dane pod nimi.'};
+  const heads=rows[0].map(norm);const idx={};
+  for(const k in HDR){idx[k]=heads.findIndex(h=>HDR[k].includes(h))}
+  if(idx.name<0&&idx.address<0)return {err:'Nie rozpoznano kolumn. Pierwszy wiersz musi zawierać nagłówki, np.: Nazwa, Adres, Ostatni przegląd, Termin. Pobierz wzór w Więcej.'};
+  let add=0,upd=0;
+  for(const r of rows.slice(1)){
+    const g=k=>idx[k]>=0?String(r[idx[k]]||'').trim():'';
+    const address=g('address');let name=g('name')||address;if(!name)continue;
+    const rec={name,address,last:parseDate(g('last')),due:parseDate(g('due')),notes:g('notes')};
+    const la=parseFloat(g('lat').replace(',','.')),ln=parseFloat(g('lng').replace(',','.'));
+    if(isFinite(la)&&isFinite(ln)&&Math.abs(la)<=90&&Math.abs(ln)<=180){rec.lat=la;rec.lng=ln}
+    let ex=S.lifts.find(l=>norm(l.name)===norm(name)&&norm(l.address||'')===norm(address));
+    if(ex){for(const k of ['last','due','notes'])if(rec[k])ex[k]=rec[k];if(rec.lat!=null){ex.lat=rec.lat;ex.lng=rec.lng}upd++}
+    else{S.lifts.push(Object.assign({id:uid(),hist:[]},rec));add++}
+  }
+  save();return{add,upd};
+}
+function csvOut(){
+  const c=v=>{v=v==null?'':String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const rows=[['Nazwa','Adres','Lat','Lng','Ostatni przegląd','Termin','Uwagi']].concat(S.lifts.map(l=>[l.name,l.address||'',l.lat??'',l.lng??'',l.last||'',l.due||'',l.notes||'']));
+  return '﻿'+rows.map(r=>r.map(c).join(';')).join('\r\n');
+}
+function download(name,text,type){const u=URL.createObjectURL(new Blob([text],{type:type||'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+
+/* ========= geokodowanie (OpenStreetMap Nominatim) ========= */
+let geoRun=false,geoStop=false;
+async function geocode(addr){
+  const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=pl&accept-language=pl&q='+encodeURIComponent(addr);
+  const r=await fetch(url,{headers:{'Accept':'application/json'}});if(!r.ok)throw new Error('HTTP '+r.status);
+  const j=await r.json();return j&&j[0]?{lat:+j[0].lat,lng:+j[0].lon}:null;
+}
+async function runGeo(){
+  if(geoRun)return;const todo=S.lifts.filter(l=>l.address&&!hasPos(l)&&!l.geoFail);
+  if(!todo.length){toast('Wszystkie adresy mają już lokalizację.');return}
+  geoRun=true;geoStop=false;let ok=0,fail=0,net=0;
+  const box=$('#geobox');const set=(i)=>{if(box)box.innerHTML=`<div class="bar"><i style="width:${Math.round(i/todo.length*100)}%"></i></div><div class="mut">Szukam adresów: ${i}/${todo.length} · znaleziono ${ok}, nie znaleziono ${fail}</div><div class="row"><button class="b sm red" data-a="geostop">Zatrzymaj</button></div>`};
+  set(0);
+  for(let i=0;i<todo.length;i++){
+    if(geoStop)break;const l=todo[i];
+    try{const p=await geocode(l.address);if(p){l.lat=p.lat;l.lng=p.lng;ok++}else{l.geoFail=true;fail++}}
+    catch(e){net++;if(net>=3){toast('Brak połączenia z internetem – przerwano wyszukiwanie.',4000);break}i--;await new Promise(r=>setTimeout(r,1500));continue}
+    net=0;save();set(i+1);await new Promise(r=>setTimeout(r,1100));
+  }
+  geoRun=false;needFit=true;save();refreshAll();if(tab==='more')renderMore();
+  toast(`Lokalizacje: znaleziono ${ok}, nie znaleziono ${fail}.`,4000);
+}
+
+/* ========= zakładka Więcej ========= */
+function renderMore(){
+  const noPos=S.lifts.filter(l=>l.address&&!hasPos(l)&&!l.geoFail).length,failed=S.lifts.filter(l=>l.geoFail&&!hasPos(l)).length;
+  $('#v-more').innerHTML=`
+  <div class="card2"><h3>Import z Excela</h3>
+    <div class="mut">W Excelu zaznacz tabelę razem z nagłówkami, skopiuj i wklej tu. Albo wczytaj plik CSV. Nagłówki: <b>Nazwa, Adres, Ostatni przegląd, Termin</b> (opcjonalnie Lat, Lng, Uwagi). Daty np. 27.09.2026.</div>
+    <textarea class="inp" id="paste" placeholder="Wklej tutaj dane z Excela…" style="margin-top:10px"></textarea>
+    <div class="row"><button class="b pri" data-a="imp">Wczytaj wklejone</button><button class="b" data-a="pickcsv">Wybierz plik CSV</button><button class="b" data-a="tpl">Pobierz wzór CSV</button></div>
+    <div class="mut" id="impres"></div></div>
+  <div class="card2"><h3>Lokalizacje na mapie</h3>
+    <div class="mut">Adresy zamieniam na punkty przez OpenStreetMap (potrzebny internet, ok. 1 adres na sekundę, więc 150 wind to około 3 minuty). Wyniki zapisują się, więc robisz to raz.</div>
+    <div class="mut" style="margin-top:6px">Do wyszukania: <b style="color:var(--fg)">${noPos}</b>${failed?` · nie znaleziono: <b style="color:var(--late)">${failed}</b> (popraw adres w szczegółach windy)`:''}</div>
+    <div id="geobox"></div>
+    <div class="row"><button class="b pri" data-a="geo">Znajdź lokalizacje</button>${failed?'<button class="b" data-a="georetry">Spróbuj ponownie nieznalezione</button>':''}</div></div>
+  <div class="card2"><h3>Ustawienia</h3>
+    <label class="mut" style="display:block;margin-bottom:4px">Ostrzegaj (pomarańczowy) na tyle dni przed terminem</label>
+    <input class="inp" type="number" min="0" max="365" id="warnd" value="${S.warn}"></div>
+  <div class="card2"><h3>Kopia danych</h3>
+    <div class="mut">Dane są zapisane w tej przeglądarce na telefonie. Eksport zapisuje je do pliku CSV (otworzysz w Excelu i wczytasz z powrotem).</div>
+    <div class="row"><button class="b" data-a="exp">Eksport CSV</button></div></div>
+  <div class="card2"><h3>Dane</h3><div class="mut">Wind: ${S.lifts.length}</div>
+    <div class="row">${S.lifts.some(l=>l.demo)?'<button class="b" data-a="rmdemo">Usuń przykłady</button>':''}<button class="b" data-a="demo">Wczytaj przykład (6 wind)</button><button class="b red" data-a="wipe">Usuń wszystkie</button></div></div>`;
+}
+function demoData(){
+  const t=today(),off=n=>{const d=new Date();d.setDate(d.getDate()+n);return isoOf(d)};
+  const a=[['Przykład 1','ul. Marszałkowska 10, Warszawa',52.2297,21.0122,-95,-5],['Przykład 2','Rynek Główny 1, Kraków',50.0617,19.9373,-80,9],['Przykład 3','ul. Długa 5, Gdańsk',54.3487,18.6531,-30,60],['Przykład 4','Rynek 2, Wrocław',51.1100,17.0326,-100,-40],['Przykład 5','ul. Półwiejska 1, Poznań',52.4035,16.9306,-10,null],['Przykład 6','ul. Piotrkowska 20, Łódź',51.7592,19.4560,-60,14]];
+  return a.map(x=>({id:uid(),demo:true,name:x[0],address:x[1],lat:x[2],lng:x[3],last:off(x[4]),due:x[5]==null?null:off(x[5]),notes:'PRZYKŁAD – do usunięcia',hist:[]}));
+}
+
+/* ========= zdarzenia ========= */
+document.addEventListener('click',async e=>{
+  const nb=e.target.closest('nav button');if(nb){showTab(nb.dataset.t);return}
+  const ch=e.target.closest('[data-f]');if(ch){filt=ch.dataset.f;refreshAll();if(tab==='map')fitAll();return}
+  const a=e.target.closest('[data-a]');if(!a)return;const act=a.dataset.a,id=a.dataset.id;
+  const L=()=>S.lifts.find(x=>x.id===id);
+  switch(act){
+    case 'zin':zoomAt(1.6,MW/2,MH/2);break;
+    case 'zout':zoomAt(1/1.6,MW/2,MH/2);break;
+    case 'fit':fitAll();break;
+    case 'prov':provTries=0;$('#offl').hidden=true;setProv(prov+1,true);break;
+    case 'loc':{
+      if(!navigator.geolocation){toast('Ta przeglądarka nie obsługuje lokalizacji.');break}
+      toast('Szukam Twojej pozycji…');
+      navigator.geolocation.getCurrentPosition(p=>{me={lat:p.coords.latitude,lng:p.coords.longitude};M.lat=me.lat;M.lng=me.lng;M.z=Math.max(M.z,13);rebuildMarks();toast('Jesteś tutaj.')},()=>toast('Nie udało się pobrać lokalizacji (sprawdź zgodę w przeglądarce).',3500),{enableHighAccuracy:true,timeout:15000,maximumAge:30000});break}
+    case 'closecard':selId=null;$('#card').hidden=true;mk.forEach(el=>el.classList.remove('sel'));break;
+    case 'open':openLift(id);break;
+    case 'close':closeSheet();break;
+    case 'gomore':showTab('more');break;
+    case 'show':{const l=L();if(l){$('#sheet').hidden=true;selId=l.id;showTab('map');focusOn(l,16);selectLift(l.id)}break}
+    case 'nav':{const l=L();if(l&&hasPos(l))window.open('https://www.google.com/maps/dir/?api=1&destination='+l.lat+','+l.lng+'&travelmode=driving','_blank');else toast('Ta winda nie ma lokalizacji.');break}
+    case 'done':doneSheet(id);break;
+    case 'q':{const d=$('#d_date').value||today();$('#d_due').value=addMonths(d,+a.dataset.n);break}
+    case 'donesave':{
+      const l=cur,d=$('#d_date').value,n=$('#d_due').value;if(!d){toast('Podaj datę wykonania.');break}
+      if(!n&&!confirm('Nie wybrano terminu następnego przeglądu. Zapisać bez terminu?'))break;
+      l.last=d;l.due=n||null;l.hist=l.hist||[];l.hist.push(d);save();$('#sheet').hidden=true;refreshAll();if(tab==='map'&&selId===l.id)selectLift(l.id);
+      toast('Zapisano: '+l.name);break}
+    case 'newlift':{const l={id:uid(),name:'Nowa winda',address:'',last:null,due:null,notes:'',hist:[]};S.lifts.push(l);save();openLift(l.id);break}
+    case 'dellift':if(confirm('Usunąć windę „'+cur.name+'”?')){S.lifts=S.lifts.filter(x=>x!==cur);selId=null;$('#card').hidden=true;save();closeSheet()}break;
+    case 'geo1':{const l=cur;if(!l.address){toast('Wpisz najpierw adres.');break}toast('Szukam…');
+      try{const p=await geocode(l.address);if(p){l.lat=p.lat;l.lng=p.lng;l.geoFail=false;save();$('#posinfo').textContent='Pozycja: '+p.lat.toFixed(5)+', '+p.lng.toFixed(5);toast('Znaleziono.')}else{l.geoFail=true;save();toast('Nie znaleziono tego adresu. Spróbuj dopisać miasto.',3500)}}
+      catch(err){toast('Brak połączenia z internetem.',3000)}break}
+    case 'gps1':{const l=cur;navigator.geolocation&&navigator.geolocation.getCurrentPosition(p=>{l.lat=p.coords.latitude;l.lng=p.coords.longitude;l.geoFail=false;save();$('#posinfo').textContent='Pozycja: '+l.lat.toFixed(5)+', '+l.lng.toFixed(5);toast('Ustawiono na Twoją pozycję.')},()=>toast('Nie udało się pobrać lokalizacji.',3000),{enableHighAccuracy:true,timeout:15000});break}
+    case 'imp':{const r=importText($('#paste').value);const el=$('#impres');
+      if(r.err){el.style.color='var(--late)';el.textContent=r.err;break}
+      needFit=true;el.style.color='var(--ok)';el.textContent=`Dodano ${r.add}, zaktualizowano ${r.upd}. Teraz kliknij „Znajdź lokalizacje”.`;$('#paste').value='';refreshAll();renderMore();$('#impres').textContent=`Dodano ${r.add}, zaktualizowano ${r.upd}. Teraz kliknij „Znajdź lokalizacje”.`;$('#impres').style.color='var(--ok)';break}
+    case 'pickcsv':$('#fcsv').click();break;
+    case 'tpl':download('wzor-przeglady.csv','﻿Nazwa;Adres;Ostatni przegląd;Termin;Uwagi\r\nWinda 101;ul. Marszałkowska 10, Warszawa;27.09.2026;27.12.2026;\r\nWinda 102;Rynek Główny 1, Kraków;15.08.2026;;klucz u portiera\r\n');break;
+    case 'geo':runGeo();break;
+    case 'geostop':geoStop=true;break;
+    case 'georetry':S.lifts.forEach(l=>{if(!hasPos(l))l.geoFail=false});save();renderMore();runGeo();break;
+    case 'exp':download('przeglady-wind-'+today()+'.csv',csvOut());break;
+    case 'demo':S.lifts=S.lifts.concat(demoData());needFit=true;save();renderMore();toast('Wczytano 6 przykładowych wind.');break;
+    case 'rmdemo':S.lifts=S.lifts.filter(l=>!l.demo);save();renderMore();break;
+    case 'wipe':if(confirm('Usunąć wszystkie windy z aplikacji? Tego nie da się cofnąć (najpierw zrób Eksport CSV).')){S.lifts=[];selId=null;$('#card').hidden=true;save();renderMore()}break;
+  }
+});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.k&&cur){let v=t.value;if(t.dataset.k==='last'||t.dataset.k==='due')v=v||null;cur[t.dataset.k]=v;if(t.dataset.k==='address'){cur.geoFail=false}save();return}
+  if(t.id==='q'){q=t.value;renderList(true);return}
+  if(t.id==='warnd'){const n=parseInt(t.value,10);if(n>=0){S.warn=n;save()}}
+});
+document.addEventListener('change',async e=>{
+  if(e.target.id==='sort')renderList(true);
+  if(e.target.id==='fcsv'&&e.target.files[0]){const txt=await e.target.files[0].text();e.target.value='';const r=importText(txt);
+    if(r.err)toast(r.err,5000);else{needFit=true;refreshAll();renderMore();$('#impres').textContent=`Dodano ${r.add}, zaktualizowano ${r.upd}. Teraz kliknij „Znajdź lokalizacje”.`;$('#impres').style.color='var(--ok)'}}
+});
+/* start */
+load();headerPill();
+if(!storeOK)$('#warn').innerHTML='<div class="warn">Zapis w pamięci przeglądarki jest niedostępny – zmiany znikną po zamknięciu. Używaj Więcej → Eksport.</div>';
+$('#chipsM').innerHTML=chipsHTML();$('#chipsL').innerHTML=chipsHTML();
+document.querySelector('.attr').textContent=PROV[prov].a;
+rebuildMarks();fitAll();
+if(!S.lifts.length){setTimeout(()=>toast('Zacznij od: Więcej → Import z Excela',4000),600)}
+</script>
+</body>
+</html>
